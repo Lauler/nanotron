@@ -109,16 +109,30 @@ class Nanoset(torch.utils.data.Dataset):
         num_epochs = int(self.train_split_num_samples / samples_per_epoch) + 1
         # Build the dataset indexes for 1 epoch
         dataset_index, dataset_sample_index = build_nanoset_index_helper(
-            n_samples=samples_per_epoch, weights=self.dataset_weights, dataset_sizes=self.dataset_lengths
+            n_samples=samples_per_epoch,
+            weights=self.dataset_weights,
+            dataset_sizes=self.dataset_lengths,
         )
-        # Shuffle the indexes the same way
-        numpy_random_state = np.random.RandomState(self.random_seed)
-        numpy_random_state.shuffle(dataset_index)
-        numpy_random_state = np.random.RandomState(self.random_seed)
-        numpy_random_state.shuffle(dataset_sample_index)
-        # Concatenate num_epochs the shuffled indexes
-        dataset_index = np.concatenate([dataset_index for _ in range(num_epochs)])
-        dataset_sample_index = np.concatenate([dataset_sample_index for _ in range(num_epochs)])
+
+        # Shuffle the indices within each epoch and concatenate them
+        r = np.random.RandomState(self.random_seed)
+        epoch_random_seeds = r.randint(0, 2**32 - 1, num_epochs)
+        dataset_indices = []
+        dataset_sample_indices = []
+        for i in range(num_epochs):
+            # Shuffle the sample and dataset indices in epoch with same seed
+            numpy_random_state = np.random.RandomState(epoch_random_seeds[i])
+            numpy_random_state.shuffle(dataset_index)
+            numpy_random_state = np.random.RandomState(epoch_random_seeds[i])
+            numpy_random_state.shuffle(dataset_sample_index)
+
+            dataset_indices.append(dataset_index)
+            dataset_sample_indices.append(dataset_sample_index)
+
+        # Concatenate the within-epoch shuffled indexes
+        dataset_index = np.concatenate(dataset_indices)
+        dataset_sample_index = np.concatenate(dataset_sample_indices)
+
         # Just keep the necessary samples
         dataset_index = dataset_index[: self.train_split_num_samples]
         dataset_sample_index = dataset_sample_index[: self.train_split_num_samples]

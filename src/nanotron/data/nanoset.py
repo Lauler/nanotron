@@ -109,26 +109,22 @@ class Nanoset(torch.utils.data.Dataset):
         num_epochs = int(self.train_split_num_samples / samples_per_epoch) + 1
         # Build the dataset indexes for 1 epoch
         dataset_index, dataset_sample_index = build_nanoset_index_helper(
-            n_samples=samples_per_epoch,
-            weights=self.dataset_weights,
-            dataset_sizes=self.dataset_lengths,
+            n_samples=samples_per_epoch, weights=self.dataset_weights, dataset_sizes=self.dataset_lengths
         )
 
-        # Shuffle the indices within each epoch and concatenate them
-        r = np.random.RandomState(self.random_seed)
-        epoch_random_seeds = r.randint(0, 2**32 - 1, num_epochs)
+        # Shuffle indices in each epoch with different random seeds and concatenate them
         dataset_indices = []
         dataset_sample_indices = []
-        for i in range(num_epochs):
-            # Shuffle the sample and dataset indices in epoch with same seed
-            numpy_random_state = np.random.RandomState(epoch_random_seeds[i])
+        for num_epoch in range(num_epochs):
+            # Shuffle the sample and dataset indices in epoch with a given seed
+            numpy_random_state = np.random.RandomState(self.random_seed + num_epoch)
             numpy_random_state.shuffle(dataset_index)
-            numpy_random_state = np.random.RandomState(epoch_random_seeds[i])
+            numpy_random_state = np.random.RandomState(self.random_seed + num_epoch)
             numpy_random_state.shuffle(dataset_sample_index)
 
             dataset_indices.append(dataset_index)
             dataset_sample_indices.append(dataset_sample_index)
-
+            
         # Concatenate the within-epoch shuffled indexes
         dataset_index = np.concatenate(dataset_indices)
         dataset_sample_index = np.concatenate(dataset_sample_indices)
